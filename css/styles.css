@@ -18,12 +18,12 @@ ul, li {
 	color: #333;
 }
 a {
-	color: orange;
-	text-decoration: none;
+	color: #800080;
+  text-decoration: none;
 }
 a:hover, a:focus {
-	color: #3397db;
-	text-decoration: none;
+	color: #d85b5b;  
+  text-decoration: none;
 }
 a img{
 	border: none 0px #fff;
@@ -41,7 +41,7 @@ article, aside, canvas, details, figcaption, figure, footer, header, hgroup, men
 }
 #footer {
   background-color: #444;
-  color: #aaa;
+  color: #ccc;
   font-size: 14pt;
   letter-spacing: 1px;
   padding: 25px;
@@ -166,7 +166,7 @@ nav h1 a {
   min-width: 100%;
 }
 #restaurants-list li h1 {
-  color: #f18200;
+  color: #800080;
   font-family: Arial,sans-serif;
   font-size: 16pt;
   font-weight: 200;
@@ -180,7 +180,7 @@ nav h1 a {
   font-size: 11pt;
 }
 #restaurants-list li a {
-  background-color: orange;
+  background-color: #800080;
   color: #fff;
   display: inline-block;
   font-size: 14pt;
