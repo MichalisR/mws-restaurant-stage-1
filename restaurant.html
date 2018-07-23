@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Normalize.css for better cross-browser consistency -->
   <link rel="stylesheet" src="//normalize-css.googlecode.com/svn/trunk/normalize.css" />
   <!-- Main CSS file -->
@@ -17,10 +18,12 @@
     <nav>
       <h1><a href="/" aria-label="Link Restaurant Reviews">Restaurant Reviews</a></h1>
     </nav>
-    <!-- Beginning breadcrumb -->
-     <ul id="breadcrumb" aria-label="breadcrumb">
-      <li><a href="/" aria-label="Link Home">Home</a></li>
-    </ul>
+    <nav aria-label="Breadcrumb" class="bc">
+      <!-- Beginning breadcrumb -->
+      <ul id="breadcrumb">
+        <li><a href="/" aria-label="Link Home">Home</a></li>
+      </ul>
+    </nav>
     <!-- End breadcrumb -->
     <!-- End nav -->
   </header>
@@ -29,13 +32,13 @@
   <!-- Beginning main -->
   <main id="maincontent">
     <!-- Beginning map -->
-    <section id="map-container">
-      <div id="map"></div>
+    <section id="map-container" aria-label="MapBox" aria-hidden="true">
+      <div id="map" role="application" aria-hidden="true"></div>
     </section>
     <!-- End map -->
     <!-- Beginning restaurant -->
     <section id="restaurant-container">
-      <h1 id="restaurant-name"></h1>
+      <h2 id="restaurant-name"></h2>
       <img id="restaurant-img">
       <p id="restaurant-cuisine"></p>
       <p id="restaurant-address"></p>
@@ -61,9 +64,10 @@
   <script type="text/javascript" src="js/dbhelper.js"></script>
   <!-- Main javascript file -->
   <script type="text/javascript" src="js/restaurant_info.js"></script>
-  <script type="application/javascript" charset="utf-8"src="js/sw_registration.js"></script>
   <!-- Google Maps -->
  <!--  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA_tKbW6A5pQ-eupxI56myUnHLqYCzOjKo&libraries=places&callback=initMap"></script> -->
+ <!-- Service Worker Registration -->
+ <script type="application/javascript" charset="utf-8" src="js/sw_registration.js"></script>
   <!-- End scripts -->
 
 </body>

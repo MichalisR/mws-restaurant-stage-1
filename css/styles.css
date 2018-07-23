@@ -66,6 +66,9 @@ nav h1 a {
   letter-spacing: 10px;
   text-transform: uppercase;
 }
+.bc {
+  text-align:left;
+}
 #breadcrumb {
     padding: 12px 40px 16px;
     list-style: none;
