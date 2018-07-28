@@ -8,27 +8,88 @@ class DBHelper {
    * Change this to restaurants.json file location on your server.
    */
   static get DATABASE_URL() {
-    const port = 8000 // Change this to your server port
-    return `http://localhost:${port}/data/restaurants.json`;
+    const port = 1337 // Change this to your server port
+    return `http://localhost:${port}/restaurants`;
+  }
+
+  // set the database
+  static setDB() {
+    return idb.open('restaurants', 1, db => {
+      if (!db.objectStoreNames.contains('restaurants')) {
+        db.createObjectStore('restaurants', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('reviews')) {
+        const reviews = db.createObjectStore('reviews', { keyPath: 'id' });
+        reviews.createIndex('byRestaurant', 'restaurant_id', {unique: false});
+      }
+    });
+  }
+
+  /**
+   * Fetch all restaurants stored in DB
+   */
+  static getAllRestaurantsFromDB() {
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('restaurants');
+      let store = transaction.objectStore('restaurants');
+      return store.getAll();
+    });
+  }
+
+  /** 
+   * Fetch restaurant from DB by Id
+   */
+  static getCachedRestaurant(id) {
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction =  db.transaction('restaurants')
+      let store = transaction.objectStore('restaurants')
+      return store.get(Number(id));
+    });
+  }
+
+  /**
+   * Update restaurant stored in DB
+   */
+  static updateRestaurantInDB(restaurant, data) {
+    restaurant[data.key] = data.value;
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('restaurants', 'readwrite');
+      let store = transaction.objectStore('restaurants');
+      store.put(restaurant);
+      return store.complete;
+    })
   }
 
   /**
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', DBHelper.DATABASE_URL);
-    xhr.onload = () => {
-      if (xhr.status === 200) { // Got a success response from server!
-        const json = JSON.parse(xhr.responseText);
-        const restaurants = json.restaurants;
+    fetch(`${DBHelper.DATABASE_URL}`)
+      .then(response => response.json())
+      .then(restaurants => {
+        let dbPromise = DBHelper.setDB();
+        dbPromise.then(db => {
+          if (!db) return callback(null, restaurants);
+          let transaction = db.transaction('restaurants', 'readwrite');
+          let store = transaction.objectStore('restaurants');
+          restaurants.forEach(restaurant => store.put(restaurant));
+        });
         callback(null, restaurants);
-      } else { // Oops!. Got an error from server.
-        const error = (`Request failed. Returned status of ${xhr.status}`);
-        callback(error, null);
-      }
-    };
-    xhr.send();
+      }).catch(error => {
+        console.log(error);
+        DBHelper.getAllRestaurantsFromDB()
+          .then(storedRestaurants => {
+            if (storedRestaurants.length > 0) return callback(null, storedRestaurants);
+          })
+          .catch(error => callback(error, null));
+      });
+      
   }
 
   /**
@@ -36,17 +97,24 @@ class DBHelper {
    */
   static fetchRestaurantById(id, callback) {
     // fetch all restaurants with proper error handling.
-    DBHelper.fetchRestaurants((error, restaurants) => {
-      if (error) {
-        callback(error, null);
-      } else {
-        const restaurant = restaurants.find(r => r.id == id);
-        if (restaurant) { // Got the restaurant
-          callback(null, restaurant);
-        } else { // Restaurant does not exist in the database
-          callback('Restaurant does not exist', null);
-        }
-      }
+    fetch(`${DBHelper.DATABASE_URL}/${id}`)
+    .then(response => response.json())
+    .then(restaurant => {
+      let dbPromise = DBHelper.setDB();
+      dbPromise.then(db => {
+        if (!db) return callback(null, restaurant);
+        let transaction = db.transaction('restaurants', 'readwrite');
+        let store = transaction.objectStore('restaurants');
+        store.put(restaurant);
+      });
+      callback(null, restaurant);
+    })
+    .catch(error => {
+      DBHelper.getRestaurantByIdFromDB(id)
+        .then(storedRestaurants => {
+          if (storedRestaurants) return callback(null, storedRestaurants)
+        })
+        .catch(error => callback(error, null))
     });
   }
 
@@ -150,7 +218,10 @@ class DBHelper {
    * Restaurant image URL.
    */
   static imageUrlForRestaurant(restaurant) {
-    return (`/img/${restaurant.photograph}`);
+    if (`${restaurant.photograph}` === 'undefined') {
+      return ('10-300.jpg');
+    }
+    return (`/img/${restaurant.photograph}`+'-300.jpg');
   }
 
   /**
@@ -181,7 +252,10 @@ class DBHelper {
    * Index image Srcset.
    */
   static imageSrcsetForIndex(restaurant) {
-    return (`${restaurant.srcset_index}`);
+    if (`${restaurant.photograph}` === 'undefined') {
+      return ('img/10-300.jpg 1x, img/10-600_2x.jpg 2x');
+    }
+    return ('img/'+`${restaurant.photograph}`+'-300.jpg 1x, img/'+`${restaurant.srcset_index}`+'-600_2x.jpg 2x');
   }
 
   /**
