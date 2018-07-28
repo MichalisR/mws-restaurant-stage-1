@@ -262,7 +262,10 @@ class DBHelper {
    * Restaurant image Srcset.
    */
   static imageSrcsetForRestaurant(restaurant) {
-    return (`${restaurant.srcset_restaurant}`);
+    if (`${restaurant.photograph}` === 'undefined') {
+      return ('img/10-300.jpg 300w, img/10-400.jpg 400w,img/10-600_2x.jpg 600w, img/10-800_2x.jpg 800w');
+    }
+    return ('img/'+`${restaurant.photograph}`+'-300.jpg 300w, img/'+`${restaurant.photograph}`+'-400.jpg 400w,img/'+`${restaurant.photograph}`+'-600_2x.jpg 600w, img/'+`${restaurant.photograph}`+'-800_2x.jpg 800w');
   }
 
 }
