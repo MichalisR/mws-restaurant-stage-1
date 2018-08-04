@@ -9,7 +9,7 @@ class DBHelper {
    */
   static get DATABASE_URL() {
     const port = 1337 // Change this to your server port
-    return `http://localhost:${port}/restaurants`;
+    return `http://localhost:${port}`;
   }
 
   // set the database
@@ -70,7 +70,7 @@ class DBHelper {
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    fetch(`${DBHelper.DATABASE_URL}`)
+    fetch(`${DBHelper.DATABASE_URL}/restaurants`)
       .then(response => response.json())
       .then(restaurants => {
         let dbPromise = DBHelper.setDB();
@@ -97,7 +97,7 @@ class DBHelper {
    */
   static fetchRestaurantById(id, callback) {
     // fetch all restaurants with proper error handling.
-    fetch(`${DBHelper.DATABASE_URL}/${id}`)
+    fetch(`${DBHelper.DATABASE_URL}/restaurants/${id}`)
     .then(response => response.json())
     .then(restaurant => {
       let dbPromise = DBHelper.setDB();
@@ -266,6 +266,109 @@ class DBHelper {
       return ('img/10-300.jpg 300w, img/10-400.jpg 400w,img/10-600_2x.jpg 600w, img/10-800_2x.jpg 800w');
     }
     return ('img/'+`${restaurant.photograph}`+'-300.jpg 300w, img/'+`${restaurant.photograph}`+'-400.jpg 400w,img/'+`${restaurant.photograph}`+'-600_2x.jpg 600w, img/'+`${restaurant.photograph}`+'-800_2x.jpg 800w');
+  }
+
+  // set favorite restaurant
+  static setRestaurantFavorite(id, state, callback) {
+    fetch(`${DBHelper.DATABASE_URL}/restaurants/${Number(id)}/?is_favorite=${state}`, {method: 'put'})
+      .then(response => callback(null, response))
+      .catch(error => callback(error, null));
+  }
+
+  // store data about favorite restaurants in DB
+  static setLocalRestaurantFavorite(id, state) {
+    let dbPromise = DBHelper.setDB();
+    const data = { id: id, is_favorite: state};
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('local-restaurants', 'readwrite');
+      let store = transaction.objectStore('local-restaurants');
+      store.put(data);
+      return store.complete;
+    })
+  }
+  // get information about modified
+  static getLocalRestaurantFavorite() {
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('local-restaurants', 'readwrite');
+      let store = transaction.objectStore('local-restaurants');
+      let data = store.getAll();
+      store.clear();
+      return data;
+    })
+  }
+
+  // add new restaurant's review
+  static addRestaurantReview(review, callback) {
+    fetch(`${DBHelper.DATABASE_URL}/reviews/`, {
+      method: 'post',
+      body: JSON.stringify(review)
+    })
+      .then(response => response.json())
+      .then(response => callback(null, response))
+      .catch(error => callback(error, null))
+  }
+
+  // add new rewiev
+   static addLocalDBReview(review) {
+     let dbPromise = DBHelper.setDB();
+     let date = Date.parse(new Date);
+     return dbPromise.then(db => {
+       if (!db) return;
+       let transaction = db.transaction('local-reviews', 'readwrite');
+       let store = transaction.objectStore('local-reviews');
+       store.put({...review, createdAt: date, updatedAt: date});
+       return store.complete;
+     })
+   }
+
+   //  put added review to reviews indexeddb
+  static updateDBReviews(review) {
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('reviews', 'readwrite');
+      let store = transaction.objectStore('reviews');
+      store.put(review);
+      return store.complete;
+    })
+  }
+
+  // get reviews stored only in local (cached) DB
+   static getLocalDBReviews(clean = false) {
+    let dbPromise = DBHelper.setDB();
+    return dbPromise.then(db => {
+      if (!db) return;
+      let transaction = db.transaction('local-reviews', 'readwrite');
+      let store = transaction.objectStore('local-reviews');
+      let reviews = store.getAll();
+      if (clean) store.clear();
+      return reviews;
+    })
+   }
+
+   // sync data stored locally with the server
+  static syncReviews(reviews) {
+    reviews.forEach(review => {
+      DBHelper.addRestaurantReview(review, (error, response) => {
+        if (error) return console.log(error);
+        DBHelper.updateDBReviews(response)
+          .then(res => console.log(res))
+          .catch(error => console.log(error));
+      })
+    })
+  }
+
+  // sync information about favorites restaurants stored locally with the server
+  static syncFavorites(data) {
+    data.forEach(entry => {
+      DBHelper.setRestaurantFavorite(entry.id, entry.is_favorite, (error, response) => {
+        if (error) return console.log(error);
+        console.log(response);
+      });
+    });
   }
 
 }

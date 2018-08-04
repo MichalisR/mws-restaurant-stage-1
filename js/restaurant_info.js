@@ -6,6 +6,8 @@ var newMap;
  */
 document.addEventListener('DOMContentLoaded', (event) => {  
   initMap();
+  initRating();
+  watchOffline();
 });
 
 /**
@@ -196,3 +198,168 @@ getParameterByName = (name, url) => {
     return '';
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
+
+// set or unset restaurant as favorite
+setFavorite = (e, restaurant = self.restaurant) => {
+  const button = document.getElementById('restaurant-favorite');
+  const data = {key: 'is_favorite', value: 'false'};
+  if (restaurant.is_favorite === 'true') {
+    data.value = 'false';
+    button.innerHTML = 'Add to favorites';
+    button.setAttribute('aria-label', 'Add to favorites');
+    button.classList.remove('isfavorite');
+    informUser('Restaurant removed from favorites', 'success');
+  } else {
+    data.value = 'true';
+    button.innerHTML = 'Remove from favorites';
+    button.setAttribute('aria-label', 'Remove from favorites');
+    button.classList.add('isfavorite');
+    informUser('Restaurant added to favorites', 'success');
+  }
+  DBHelper.updateRestaurantInDB(restaurant, data);
+  DBHelper.setRestaurantFavorite(restaurant.id, data.value, (error, response) => {
+    if (error) {
+      DBHelper.setLocalRestaurantFavorite(restaurant.id, data.value)
+        .then(res => console.log(res))
+        .catch(error => console.log(error));
+    } else {
+      console.log(response);
+    }
+
+  })
+}
+
+informUser = (message, type) => {
+  const messageBox = document.getElementById('app-status');
+  messageBox.innerHTML = message;
+  messageBox.classList.add(type);
+  messageBox.style.display = 'block';
+  setTimeout(() => {
+    messageBox.style.display = 'none';
+  }, 3000);
+}
+
+initRating = () => {
+  const form = document.querySelector('form');
+  form.addEventListener('submit', e => addReview(e));
+  const container = document.querySelector('#user-rating div');
+  container.addEventListener('mouseout', () => clearRating());
+  container.addEventListener('focusout', () => clearRating());
+  const items = document.querySelectorAll('label.star');
+  items.forEach(item => {
+    item.addEventListener('mouseover', () => fillRating(item.firstChild));
+    item.addEventListener('focusin', () => fillRating(item.firstChild));
+    item.addEventListener('click', () => setRating(item.firstChild));
+    item.addEventListener('keypress', e => {
+      e.preventDefault();
+      if (e.key == 'Enter' || e.key == ' ') setRating(`${item.firstChild}`);
+    });
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('aria-label', `set rating ${item.firstChild} of 5`);
+  })
+}
+
+// fill rating star (style) by the given value
+fillRating = (val) => {
+  const items = document.querySelectorAll('label.star');
+  items.forEach(item => {
+    if (Number(item.firstChild.value) < Number(val)+1) {
+      item.classList.add('orange')
+    } else {
+      item.classList.remove('orange');
+    }
+  })
+}
+
+// remove rating (it's for mouseover events)
+clearRating = () => {
+  const items = document.querySelectorAll('label.star');
+  items.forEach(item => item.classList.remove('orange'));
+}
+
+// set rating input value (rating) by the given value
+setRating = (val) => {
+  const items = document.querySelectorAll('label.star');
+  items.forEach(item => {
+    if (Number(item.firstChild.value) < Number(val)+1) {
+      item.classList.add('checked');
+    } else {
+      item.classList.remove('checked');
+    }
+  });
+  items.forEach(item => item.removeAttribute('checked'));
+  items[Number(val.data)-1].setAttribute('checked', 'checked');
+}
+
+
+// add new review (put data to database and render it on the screen)
+addReview = (e, restaurant = self.restaurant) => {
+  e.preventDefault();
+
+  // set new review object
+  const review = {
+    name : secureInput(document.querySelector('input[name=user-name]').value),
+    rating : Number(document.querySelector('label[class=star][checked=checked]')),
+    comments : secureInput(document.querySelector('textarea[name=user-review]').value),
+    restaurant_id : restaurant.id
+  }
+  
+  // add new review to the server or indexedDB if error
+  DBHelper.addRestaurantReview(review, (error, response) => {
+    if (error) {
+      // if review is not put on the server, add it to local (cached) DB
+      DBHelper.addLocalDBReview(review).then(() => {
+        informUser('Internet connection not detected. New review stored locally.', 'alert');
+      });
+    } else {
+      // update cached reviews for offline usage
+      DBHelper.updateDBReviews(response)
+        .then(() => informUser('New review added', 'success'))
+        .catch(err => console.log(err));
+    }
+  });
+
+  // render review for the client
+  clearReviewForm();
+  const date = Date.parse(new Date);
+  const ul = document.getElementById('reviews-list');
+  ul.appendChild(createReviewHTML({...review, createdAt: date, updatedAt: date}));
+}
+
+// replace html to text in inputed values to secure the form
+secureInput = (value) => {
+  return value.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// clear the form 
+clearReviewForm = () => {
+  document.querySelector('input[name=user-name]').value = '';
+  let labels = document.querySelectorAll('label.star')
+  labels.forEach(label => {
+    label.classList.remove('checked')
+    label.removeAttribute('checked');
+  });
+  document.querySelector('textarea[name=user-review').value = '';
+};
+
+// monitor if the user is online
+watchOffline = () => {
+    window.addEventListener('online', e => {
+      // notify the user
+      informUser('You are online again. Syncing data...', 'info')
+      
+      // sync reviews
+      DBHelper.getLocalDBReviews(true)
+      .then(localReviews => DBHelper.syncReviews(localReviews))
+      .catch(error => console.log(error));
+    
+      // sync restarants
+      DBHelper.getLocalRestaurantFavorite()
+      .then(data => DBHelper.syncFavorites(data))
+      .catch(error => console.log(error));
+
+    });
+    window.addEventListener('offline', e => {
+      informUser('No Internet connection detected', 'alert');
+    });
+  }

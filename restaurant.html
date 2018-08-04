@@ -48,14 +48,44 @@
       <table id="restaurant-hours"></table>
     </section>
     <!-- end restaurant -->
+    <section id="social">
+      <button id="restaurant-favorite" tabindex="0" class="" onclick="setFavorite()" aria-label="Set restaurant as favourite">Set as favorite</button>
+    </section>
     <!-- Beginning reviews -->
     <section id="reviews-container">
       <ul id="reviews-list"></ul>
     </section>
+    <section id="review-form">
+        <h4>New Review</h4>
+        <form>
+          <label id="user-name">Name
+            <input name="user-name" placeholder="enter your name" required>
+          </label>
+          <label id="user-rating">Rating
+            <div aria-label="select your rating">
+              <label class="star">1<input name="user-rating" type="radio" value="1">
+              </label>
+              <label class="star">2<input name="user-rating" type="radio" value="2">
+              </label>
+              <label class="star">3<input name="user-rating" type="radio" value="3">
+              </label>
+              <label class="star">4<input name="user-rating" type="radio" value="4">
+              </label>
+              <label class="star">5<input name="user-rating" type="radio" value="5">
+              </label>
+            </div>
+          </label>
+          <label id="user-review">Your review
+            <textarea name="user-review" placeholder="add your comments..." required></textarea>
+          </label>
+          <button>Add Review</button>
+        </form>
+      </section>
     <!-- End reviews -->
   </main>
   <!-- End main -->
 
+  <div id="app-status" class="info" style="display:none; transition: all 2s ease-in-out;">Test message</div>
   <!-- Beginning footer -->
   <footer id="footer">
     Copyright (c) 2017 <a href="/"><strong>Restaurant Reviews</strong></a> All Rights Reserved.
